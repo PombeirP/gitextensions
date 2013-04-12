@@ -1169,7 +1169,7 @@ namespace GitCommands
 
                 string s = GetValue(name);
                 T result = s == null ? defaultValue : decode(s);
-                ByNameMap.Add(name, result);
+                ByNameMap[name] = result;
                 return result;
             }
         }
