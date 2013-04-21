@@ -260,7 +260,7 @@ namespace GitUI.BuildServerIntegration
                                 {
                                     var buildServerAdapter = export.Value;
                                     var config = buildServerConfigSource.Configs[buildServerType];
-                                    buildServerAdapter.Initialize(this, config);
+                                    buildServerAdapter.Initialize(this, config, this.revisionGrid.UICommands);
                                     return buildServerAdapter;
                                 }
                                 catch (InvalidOperationException)

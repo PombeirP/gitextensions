@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
 using Nini.Config;
 
@@ -33,9 +34,11 @@ namespace GitUI.BuildServerIntegration
 
         private Task<IEnumerable<string>> getBuildTypesTask;
 
-        public void Initialize(IBuildServerWatcher buildServerWatcher, IConfig config)
+        private IGitUICommands uiCommands;
 
         private string ProjectName { get; set; }
+
+        public void Initialize(IBuildServerWatcher buildServerWatcher, IConfig config, IGitUICommands uiCommands)
         {
             if (this.buildServerWatcher != null)
                 throw new InvalidOperationException("Already initialized");
@@ -68,6 +71,9 @@ namespace GitUI.BuildServerIntegration
                                         select element.Attribute("id").Value,
                                 TaskContinuationOptions.ExecuteSynchronously);
                 }
+
+                this.uiCommands = uiCommands;
+                this.uiCommands.PostPush += UiCommandsOnPostPush;
             }
         }
 
@@ -387,6 +393,13 @@ namespace GitUI.BuildServerIntegration
             return filteredBuildsXmlResponseTask;
         }
 
+        private void UiCommandsOnPostPush(object sender, GitUIPostActionEventArgs gitUiPostActionEventArgs)
+        {
+            var task = httpClient.PostAsync("vcsupdate.html", new StringContent(string.Empty));
+
+            task.ContinueWith(message => { });
+        }
+
         private static DateTime DecodeJsonDateTime(string dateTimeString)
         {
             var dateTime = new DateTime(
@@ -417,6 +430,8 @@ namespace GitUI.BuildServerIntegration
                 httpClient.Dispose();
                 httpClient = null;
             }
+
+            this.uiCommands.PostPush -= UiCommandsOnPostPush;
         }
     }
 }

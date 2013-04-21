@@ -6,7 +6,7 @@ namespace GitUIPluginInterfaces.BuildServerIntegration
 {
     public interface IBuildServerAdapter : IDisposable
     {
-        void Initialize(IBuildServerWatcher buildServerWatcher, IConfig config);
+        void Initialize(IBuildServerWatcher buildServerWatcher, IConfig config, IGitUICommands uiCommands);
 
         /// <summary>
         /// Gets a unique key which identifies this build server.
