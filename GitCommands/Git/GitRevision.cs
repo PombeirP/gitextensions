@@ -19,7 +19,7 @@ namespace GitCommands
         private IList<IGitItem> _subItems;
         private readonly List<GitRef> _refs = new List<GitRef>();
         private readonly GitModule _module;
-        private BuildInfo _buildStatus;
+        private Dictionary<string, BuildInfo> _buildStatusDictionary = new Dictionary<string, BuildInfo>();
 
         public GitRevision(GitModule aModule, string guid)
         {
@@ -39,14 +39,13 @@ namespace GitCommands
         public string CommitterEmail { get; set; }
         public DateTime CommitDate { get; set; }
 
-        public BuildInfo BuildStatus
+        public Dictionary<string, BuildInfo> BuildStatusDictionary
         {
-            get { return _buildStatus; }
+            get { return _buildStatusDictionary; }
             set
             {
-                if (Equals(value, _buildStatus)) return;
-                _buildStatus = value;
-                OnPropertyChanged("BuildStatus");
+                _buildStatusDictionary = value;
+                OnPropertyChanged("BuildStatusDictionary");
             }
         }
 

@@ -34,7 +34,7 @@ namespace GitUI.CommandsDialogs
             if (selectedGitRevision != null) selectedGitRevision.PropertyChanged += RevisionPropertyChanged;
 
             var buildInfoIsAvailable =
-                !(revision == null || revision.BuildStatus == null || string.IsNullOrEmpty(revision.BuildStatus.Url));
+                !(revision == null || revision.BuildStatusDictionary == null || !revision.BuildStatusDictionary.Any()/* || string.IsNullOrEmpty(revision.BuildStatusDictionary.Url)*/);
 
             tabControl.SuspendLayout();
 
@@ -51,7 +51,7 @@ namespace GitUI.CommandsDialogs
 
                     if (isFavIconMissing || tabControl.SelectedTab == buildReportTabPage)
                     {
-                        buildReportWebBrowser.Navigate(revision.BuildStatus.Url);
+                        buildReportWebBrowser.Navigate(revision.BuildStatusDictionary.Values.OrderBy(buildInfo => buildInfo.StartDate).Last().Url);
 
                         if (isFavIconMissing)
                         {
@@ -82,7 +82,7 @@ namespace GitUI.CommandsDialogs
 
         private void RevisionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == "BuildStatus")
+            if (e.PropertyName == "BuildStatusDictionary")
             {
                 // Refresh the selected Git revision
                 this.FillBuildReport(this.selectedGitRevision);    

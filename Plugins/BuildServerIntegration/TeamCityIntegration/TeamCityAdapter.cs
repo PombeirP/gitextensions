@@ -220,7 +220,7 @@ namespace TeamCityIntegration
         private static BuildInfo CreateBuildInfo(XDocument buildXmlDocument)
         {
             var buildXElement = buildXmlDocument.Element("build");
-            var idValue = buildXElement.Attribute("id").Value;
+            var buildTypeId = buildXElement.Element("buildType").Attribute("id").Value;
             var statusValue = buildXElement.Attribute("status").Value;
             var startDateText = buildXElement.Element("startDate").Value;
             var statusText = buildXElement.Element("statusText").Value;
@@ -239,7 +239,7 @@ namespace TeamCityIntegration
 
             var buildInfo = new BuildInfo
                 {
-                    Id = idValue,
+                    TypeId = buildTypeId,
                     StartDate = DecodeJsonDateTime(startDateText),
                     Status = ParseBuildStatus(statusValue),
                     Description = statusText,

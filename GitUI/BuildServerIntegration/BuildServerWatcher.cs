@@ -233,16 +233,12 @@ namespace GitUI.BuildServerIntegration
                 if (row >= 0)
                 {
                     var rowData = revisions.GetRowData(row);
-                    if (rowData.BuildStatus == null ||
-                        buildInfo.StartDate >= rowData.BuildStatus.StartDate)
-                    {
-                        rowData.BuildStatus = buildInfo;
+                    rowData.BuildStatusDictionary[buildInfo.TypeId] = buildInfo;
 
-                        if (BuildStatusImageColumnIndex != -1)
-                            revisions.UpdateCellValue(BuildStatusImageColumnIndex, row);
-                        if (BuildStatusMessageColumnIndex != -1)
-                            revisions.UpdateCellValue(BuildStatusMessageColumnIndex, row);
-                    }
+                    if (BuildStatusImageColumnIndex != -1)
+                        revisions.UpdateCellValue(BuildStatusImageColumnIndex, row);
+                    if (BuildStatusMessageColumnIndex != -1)
+                        revisions.UpdateCellValue(BuildStatusMessageColumnIndex, row);
                 }
             }
         }

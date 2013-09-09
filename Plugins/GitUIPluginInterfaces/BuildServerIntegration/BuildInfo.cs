@@ -11,7 +11,7 @@ namespace GitUIPluginInterfaces.BuildServerIntegration
             Failure
         }
 
-        public string Id { get; set; }
+        public string TypeId { get; set; }
         public DateTime StartDate { get; set; }
         public BuildStatus Status { get; set; }
         public string Description { get; set; }

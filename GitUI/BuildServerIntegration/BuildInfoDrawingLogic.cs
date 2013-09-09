@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
 using GitUI.Properties;
@@ -11,11 +12,11 @@ namespace GitUI.BuildServerIntegration
     {
         public static void BuildStatusImageColumnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, Brush foreBrush, Font rowFont)
         {
-            if (revision.BuildStatus != null)
+            if (revision.BuildStatusDictionary != null && revision.BuildStatusDictionary.Any())
             {
                 Image buildStatusImage = null;
 
-                switch (revision.BuildStatus.Status)
+                switch (revision.BuildStatusDictionary.Values.Max(buildInfo => buildInfo.Status))
                 {
                     case BuildInfo.BuildStatus.Success:
                         buildStatusImage = Resources.BuildSuccessful;
@@ -37,11 +38,11 @@ namespace GitUI.BuildServerIntegration
 
         public static void BuildStatusMessageCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, Brush foreBrush, Font rowFont)
         {
-            if (revision.BuildStatus != null)
+            if (revision.BuildStatusDictionary != null && revision.BuildStatusDictionary.Any())
             {
                 Brush buildStatusForebrush = foreBrush;
 
-                switch (revision.BuildStatus.Status)
+                switch (revision.BuildStatusDictionary.Values.Max(buildInfo => buildInfo.Status))
                 {
                     case BuildInfo.BuildStatus.Success:
                         buildStatusForebrush = Brushes.DarkGreen;
@@ -60,7 +61,7 @@ namespace GitUI.BuildServerIntegration
         {
             e.FormattingApplied = false;
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
-            cell.ToolTipText = GetBuildStatusMessageText(revision);
+            cell.ToolTipText = string.Join(Environment.NewLine, revision.BuildStatusDictionary.Values.Where(buildInfo => !string.IsNullOrEmpty(buildInfo.Description)).Select(buildInfo => buildInfo.Description));
         }
 
         public static void BuildStatusMessageCellFormatting(DataGridViewCellFormattingEventArgs e, GitRevision revision)
@@ -70,9 +71,8 @@ namespace GitUI.BuildServerIntegration
 
         private static string GetBuildStatusMessageText(GitRevision revision)
         {
-            return revision.BuildStatus != null && !string.IsNullOrEmpty(revision.BuildStatus.Description)
-                          ? revision.BuildStatus.Description
-                          : string.Empty;
+            var text = string.Join(", ", revision.BuildStatusDictionary.Values.Where(buildInfo => !string.IsNullOrEmpty(buildInfo.Description)).Select(buildInfo => buildInfo.Description));
+            return text;
         }
     }
 }
