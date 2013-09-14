@@ -124,6 +124,12 @@ namespace GitCommands
             VersionIndependentRegKey.SetValue("InstallDir", dir);
         }
 
+        public static bool CheckSettings
+        {
+            get { return ((string)VersionIndependentRegKey.GetValue("CheckSettings", "true")).Equals("true", StringComparison.CurrentCultureIgnoreCase); }
+            set { VersionIndependentRegKey.SetValue("CheckSettings", value ? "true" : "false"); }
+        }
+
         public static string CascadeShellMenuItems
         {
             get { return (string)VersionIndependentRegKey.GetValue("CascadeShellMenuItems", "110111000111111111"); }
@@ -132,26 +138,26 @@ namespace GitCommands
 
         public static bool AlwaysShowAllCommands
         {
-            get { return (int)VersionIndependentRegKey.GetValue("AlwaysShowAllCommands", 0) != 0; }
-            set { VersionIndependentRegKey.SetValue("AlwaysShowAllCommands", value ? 1 : 0); }
+            get { return ((string)VersionIndependentRegKey.GetValue("AlwaysShowAllCommands", "false")).Equals("true", StringComparison.CurrentCultureIgnoreCase); }
+            set { VersionIndependentRegKey.SetValue("AlwaysShowAllCommands", value ? "true" : "false"); }
         }
 
         public static bool ShowCurrentBranchInVisualStudio
         {
             //This setting MUST be set to false by default, otherwise it will not work in Visual Studio without
             //other changes in the Visual Studio plugin itself.
-            get { return (int)VersionIndependentRegKey.GetValue("showcurrentbranchinvisualstudio", 1) != 0; }
-            set { VersionIndependentRegKey.SetValue("showcurrentbranchinvisualstudio", value ? 1 : 0); }
+            get { return ((string)VersionIndependentRegKey.GetValue("ShowCurrentBranchInVS", "true")).Equals("true", StringComparison.CurrentCultureIgnoreCase); }
+            set { VersionIndependentRegKey.SetValue("ShowCurrentBranchInVS", value ? "true" : "false"); }
         }
 
-        public static string GitCommand
+        public static string GitCommandValue
         {
             get
             {
                 if (IsPortable())
-                    return GetString("gitcommand", "git");
+                    return GetString("gitcommand", "");
                 else
-                    return (string)VersionIndependentRegKey.GetValue("gitcommand", "git");
+                    return (string)VersionIndependentRegKey.GetValue("gitcommand", "");
             }
             set
             {
@@ -159,6 +165,16 @@ namespace GitCommands
                     SetString("gitcommand", value);
                 else
                     VersionIndependentRegKey.SetValue("gitcommand", value);
+            }
+        }
+
+        public static string GitCommand
+        {
+            get
+            {
+                if (String.IsNullOrEmpty(GitCommandValue))
+                    return "git";
+                return GitCommandValue;
             }
         }
 

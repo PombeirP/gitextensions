@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
+using GitUI.BuildServerIntegration;
 using GitUI.CommandsDialogs;
 using GitUI.HelperDialogs;
 using GitUI.Hotkey;
@@ -65,6 +66,8 @@ namespace GitUI
         private Label _quickSearchLabel;
         private string _quickSearchString;
         private RevisionGraph _revisionGraphCommand;
+
+        public BuildServerWatcher BuildServerWatcher { get; private set; }
 
         private RevisionGridLayout _layout;
         private int _rowHeigth;
@@ -169,6 +172,8 @@ namespace GitUI
         [Browsable(false)]
         public Font SuperprojectFont { get; private set; }
         [Browsable(false)]
+        public int LastScrollPos { get; private set; }
+        [Browsable(false)]
         public string[] LastSelectedRows { get; private set; }
         [Browsable(false)]
         public Font RefsFont { get; private set; }
@@ -243,6 +248,15 @@ namespace GitUI
         public bool ShowUncommitedChangesIfPossible
         {
             get; set;
+        }
+
+        [Description("Show build server information in revision grid if enabled in settings.")]
+        [Category("Behavior")]
+        [DefaultValue(false)]
+        public bool ShowBuildServerInfo
+        {
+            get;
+            set;
         }
 
         [Description("Do not open the commit info dialog on double click. This is used if the double click event is handled elseswhere.")]
@@ -518,6 +532,8 @@ namespace GitUI
             Revisions.Visible = false;
             Loading.Visible = true;
             Loading.BringToFront();
+
+            BuildServerWatcher = new BuildServerWatcher(this, Revisions);
         }
 
         public new void Load()
@@ -772,6 +788,8 @@ namespace GitUI
 
                 _initialLoad = true;
 
+                BuildServerWatcher.CancelBuildStatusFetchOperation();
+
                 DisposeRevisionGraphCommand();
 
                 var newCurrentCheckout = Module.GetCurrentCheckout();
@@ -987,6 +1005,8 @@ namespace GitUI
                                           Loading.Visible = false;
                                           SelectInitialRevision();
                                           _isLoading = false;
+                                          if (ShowBuildServerInfo)
+                                            BuildServerWatcher.LaunchBuildServerInfoFetchOperation();
                                       }, this);
             }
 
@@ -1174,45 +1194,45 @@ namespace GitUI
 
                 if (columnIndex == messageColIndex)
                 {
-                            int baseOffset = 0;
-                            if (IsCardLayout())
+                    int baseOffset = 0;
+                    if (IsCardLayout())
+                    {
+                        baseOffset = 5;
+
+                        Rectangle cellRectangle = new Rectangle(e.CellBounds.Left + baseOffset, e.CellBounds.Top + 1, e.CellBounds.Width - (baseOffset * 2), e.CellBounds.Height - 4);
+
+                        if (!AppSettings.RevisionGraphDrawNonRelativesGray || Revisions.RowIsRelative(e.RowIndex))
+                        {
+                            e.Graphics.FillRectangle(
+                                new LinearGradientBrush(cellRectangle,
+                                                        Color.FromArgb(255, 220, 220, 231),
+                                                        Color.FromArgb(255, 240, 240, 250), 90, false), cellRectangle);
+                            using (var pen = new Pen(Color.FromArgb(255, 200, 200, 200), 1))
                             {
-                                baseOffset = 5;
-
-                                Rectangle cellRectangle = new Rectangle(e.CellBounds.Left + baseOffset, e.CellBounds.Top + 1, e.CellBounds.Width - (baseOffset * 2), e.CellBounds.Height - 4);
-
-                                if (!AppSettings.RevisionGraphDrawNonRelativesGray || Revisions.RowIsRelative(e.RowIndex))
-                                {
-                                    e.Graphics.FillRectangle(
-                                        new LinearGradientBrush(cellRectangle,
-                                                                Color.FromArgb(255, 220, 220, 231),
-                                                                Color.FromArgb(255, 240, 240, 250), 90, false), cellRectangle);
-                                    using (var pen = new Pen(Color.FromArgb(255, 200, 200, 200), 1))
-                                    {
-                                        e.Graphics.DrawRectangle(pen, cellRectangle);
-                                    }
-                                }
-                                else
-                                {
-                                    e.Graphics.FillRectangle(
-                                        new LinearGradientBrush(cellRectangle,
-                                                                Color.FromArgb(255, 240, 240, 240),
-                                                                Color.FromArgb(255, 250, 250, 250), 90, false), cellRectangle);
-                                }
-
-                                if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
-                                {
-                                    using (var penSelectionBackColor = new Pen(Revisions.RowTemplate.DefaultCellStyle.SelectionBackColor, 1))
-                                        e.Graphics.DrawRectangle(penSelectionBackColor, cellRectangle);
-                                }
+                                e.Graphics.DrawRectangle(pen, cellRectangle);
                             }
+                        }
+                        else
+                        {
+                            e.Graphics.FillRectangle(
+                                new LinearGradientBrush(cellRectangle,
+                                                        Color.FromArgb(255, 240, 240, 240),
+                                                        Color.FromArgb(255, 250, 250, 250), 90, false), cellRectangle);
+                        }
 
-                            float offset = baseOffset;
-                            var gitRefs = revision.Refs;
+                        if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
+                        {
+                            using (var penSelectionBackColor = new Pen(Revisions.RowTemplate.DefaultCellStyle.SelectionBackColor, 1))
+                                e.Graphics.DrawRectangle(penSelectionBackColor, cellRectangle);
+                        }
+                    }
+
+                    float offset = baseOffset;
+                    var gitRefs = revision.Refs;
 
                     if (gitRefs.Any())
-                            {
-                                gitRefs.Sort((left, right) =>
+                    {
+                        gitRefs.Sort((left, right) =>
                                         {
                                             if (left.IsTag != right.IsTag)
                                                 return right.IsTag.CompareTo(left.IsTag);
@@ -1221,33 +1241,33 @@ namespace GitUI
                                             return left.Name.CompareTo(right.Name);
                                         });
 
-                                foreach (var gitRef in gitRefs.Where(head => (!head.IsRemote || _revisionGridMenuCommands.ShowRemoteBranches)))
+                        foreach (var gitRef in gitRefs.Where(head => (!head.IsRemote || _revisionGridMenuCommands.ShowRemoteBranches)))
+                        {
+                            Font refsFont;
+
+                            if (gitRef.IsTag)
+                            {
+                                if (!AppSettings.ShowTags)
                                 {
-                                    Font refsFont;
+                                    continue;
+                                }
+                            }
 
-                                    if (gitRef.IsTag)
-                                    {
-                                        if (!AppSettings.ShowTags)
-                                        {
-                                            continue;
-                                        }
-                                    }
+                            if (IsFilledBranchesLayout())
+                            {
+                                //refsFont = head.Selected ? rowFont : new Font(rowFont, FontStyle.Regular);
+                                refsFont = rowFont;
 
-                                    if (IsFilledBranchesLayout())
-                                    {
-                                        //refsFont = head.Selected ? rowFont : new Font(rowFont, FontStyle.Regular);
-                                        refsFont = rowFont;
+                                //refsFont = head.Selected
+                                //    ? new Font(rowFont, rowFont.Style | FontStyle.Italic)
+                                //    : rowFont;
+                            }
+                            else
+                            {
+                                refsFont = RefsFont;
+                            }
 
-                                        //refsFont = head.Selected
-                                        //    ? new Font(rowFont, rowFont.Style | FontStyle.Italic)
-                                        //    : rowFont;
-                                    }
-                                    else
-                                    {
-                                        refsFont = RefsFont;
-                                    }
-
-                                    Color headColor = GetHeadColor(gitRef);
+                            Color headColor = GetHeadColor(gitRef);
                             using (Brush textBrush = new SolidBrush(headColor))
                             {
                                     string headName;
@@ -1355,12 +1375,20 @@ namespace GitUI
                                                   new PointF(e.CellBounds.Left, e.CellBounds.Top + 4));
                         }
                 else if (columnIndex == dateColIndex)
-                        {
-                            var time = AppSettings.ShowAuthorDate ? revision.AuthorDate : revision.CommitDate;
-                            var text = TimeToString(time);
-                            e.Graphics.DrawString(text, rowFont, foreBrush,
-                                                  new PointF(e.CellBounds.Left, e.CellBounds.Top + 4));
-                        }
+                {
+                    var time = AppSettings.ShowAuthorDate ? revision.AuthorDate : revision.CommitDate;
+                    var text = TimeToString(time);
+                    e.Graphics.DrawString(text, rowFont, foreBrush,
+                                            new PointF(e.CellBounds.Left, e.CellBounds.Top + 4));
+                }
+                else if (columnIndex == BuildServerWatcher.BuildStatusImageColumnIndex)
+                {
+                    BuildInfoDrawingLogic.BuildStatusImageColumnCellPainting(e, revision, foreBrush, rowFont);
+                }
+                else if (columnIndex == BuildServerWatcher.BuildStatusMessageColumnIndex)
+                {
+                    BuildInfoDrawingLogic.BuildStatusMessageCellPainting(e, revision, foreBrush, rowFont);
+                }
                 else if (AppSettings.ShowIndicatorForMultilineMessage && columnIndex == isMsgMultilineColIndex)
                 {
                     var text = (string)e.FormattedValue;
@@ -1404,13 +1432,21 @@ namespace GitUI
                     e.Value = revision.Author ?? "";
             }
             else if (columnIndex == dateColIndex)
-                    {
-                        var time = AppSettings.ShowAuthorDate ? revision.AuthorDate : revision.CommitDate;
-                        if (time == DateTime.MinValue || time == DateTime.MaxValue)
-                            e.Value = "";
-                        else
-                            e.Value = string.Format("{0} {1}", time.ToShortDateString(), time.ToLongTimeString());
-                    }
+            {
+                var time = AppSettings.ShowAuthorDate ? revision.AuthorDate : revision.CommitDate;
+                if (time == DateTime.MinValue || time == DateTime.MaxValue)
+                    e.Value = "";
+                else
+                    e.Value = string.Format("{0} {1}", time.ToShortDateString(), time.ToLongTimeString());
+            }
+            else if (columnIndex == BuildServerWatcher.BuildStatusImageColumnIndex)
+            {
+                BuildInfoDrawingLogic.BuildStatusImageColumnCellFormatting(e, Revisions, revision);
+            }
+            else if (columnIndex == BuildServerWatcher.BuildStatusMessageColumnIndex)
+            {
+                BuildInfoDrawingLogic.BuildStatusMessageCellFormatting(e, revision);
+            }
             else if (AppSettings.ShowIndicatorForMultilineMessage && columnIndex == isMsgMultilineColIndex)
             {
                 if (revision.Body == null && !revision.IsArtificial())
